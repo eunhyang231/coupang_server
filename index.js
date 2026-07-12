@@ -1,15 +1,20 @@
 // index.js
 
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const fetch = require('node-fetch'); // npm install node-fetch@2
 
 // 🔐 쿠팡 OPEN API 키 (네 키로 바꿔 넣기)
-const COUPANG_ACCESS_KEY = '3b878a7b-80fb-46c8-9cfb-a51e82e6edcd';
-const COUPANG_SECRET_KEY = '4506290431962b915febc385180f401c1673141a';
-const COUPANG_VENDOR_ID = 'PARTNER';
-const COUPANG_DOMAIN = 'https://api-gateway.coupang.com';
+const COUPANG_ACCESS_KEY = process.env.COUPANG_ACCESS_KEY;
+const COUPANG_SECRET_KEY = process.env.COUPANG_SECRET_KEY;
+const COUPANG_VENDOR_ID = process.env.COUPANG_VENDOR_ID;
+const COUPANG_DOMAIN = process.env.COUPANG_DOMAIN;
+
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./price_history.db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +52,29 @@ function generateHmac(method, uri, accessKey, secretKey) {
 
   return { authorization };
 }
+
+function extractProductId(link) {
+  if (!link) return null;
+  const match = String(link).match(/products\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+// 처음 서버 켜질 때 테이블 없으면 만들기
+db.serialize(() => {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS price_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id TEXT NOT NULL,
+      price INTEGER NOT NULL,
+      captured_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_price_history_product
+    ON price_history(product_id, captured_at)
+  `);
+});
 
 // server.js 상단/중간 어딘가
 const products = [
@@ -165,8 +193,45 @@ app.get('/search', async (req, res) => {
       console.log(JSON.stringify(list[0], null, 2));
       console.log('=======================');
     }
-	
+    const items = list.map((item) => {
+          const name = item.productName;
+          const price = item.productPrice;
+          const rocket = item.isRocket ?? false;
+          const image = item.productImage;
+          const productId = String(item.productId); // 쿠팡에서 내려주는 productId
 
+          const link = `https://www.coupang.com/vp/products/${productId}`;
+
+          // price_history 테이블에 기록 남기기
+           if (productId && price > 0) {
+                  console.log('[PRICE_HISTORY] insert', productId, price);
+                  db.run(
+                    'INSERT INTO price_history (product_id, price, captured_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                    [productId, price],
+                  );
+                }
+
+          return {
+            name,
+            price,
+            rocket,
+            coupon: false, // JSON에 없으므로 기본값 false
+            image,
+            link,
+            productId, // 🔥 Flutter에서 쓸 수 있게 같이 내려주기
+          };
+        });
+
+        console.log('[SEARCH] mapped items length =', items.length);
+        res.json(items);
+      } catch (err) {
+        console.error('[SEARCH] server error:', err);
+        res.json([]);
+      }
+    });
+
+
+    /*
     const items = list.map((item) => ({
       name: item.productName,
       price: item.productPrice,
@@ -184,13 +249,40 @@ app.get('/search', async (req, res) => {
     console.error('[SEARCH] server error:', err);
     res.json([]);
   }
-});
-
-// 서버 시작
-/*app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🔥 Server running at http://0.0.0.0:${PORT}`);
 });*/
 
+app.get('/price-history', (req, res) => {
+  const { productId } = req.query;
+  const limit = Number(req.query.limit || 20); // 최근 N개만
+
+  if (!productId) {
+    return res.status(400).json({ error: 'productId required' });
+  }
+
+  db.all(
+    `
+      SELECT price, captured_at
+      FROM price_history
+      WHERE product_id = ?
+      ORDER BY captured_at ASC
+      LIMIT ?
+    `,
+    [productId, limit],
+    (err, rows) => {
+      if (err) {
+        console.error('[PRICE_HISTORY] db error:', err);
+        return res.status(500).json({ error: 'db error' });
+      }
+      res.json(rows);
+    },
+  );
+});
+
+
+
+app.get('/', (req, res) => {
+  res.send('Coupang price compare API is running');
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
