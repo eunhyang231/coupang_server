@@ -58,6 +58,125 @@ app.get('/db-test', async (req, res) => {
   }
 });
 
+// ========================================
+// ❤️ 관심상품 Supabase 저장 API
+// v0.5 - 2026-07-18
+// ========================================
+app.post('/watched-products', async (req, res) => {
+  const {
+    deviceId,
+    productId,
+    productName,
+    searchKeyword,
+    imageUrl,
+    productUrl,
+    currentPrice,
+  } = req.body;
+
+  // 필수 데이터가 빠졌는지 확인
+  if (
+    !deviceId ||
+    !productId ||
+    !productName ||
+    !searchKeyword ||
+    !Number.isInteger(currentPrice) ||
+    currentPrice <= 0
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: '관심상품 정보가 올바르지 않아요.',
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    // 관심상품과 최초 가격 기록을 함께 안전하게 저장
+    await client.query('BEGIN');
+
+    const productResult = await client.query(
+      `
+      INSERT INTO watched_products (
+        device_id,
+        product_id,
+        product_name,
+        search_keyword,
+        image_url,
+        product_url,
+        current_price,
+        is_active,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW())
+      ON CONFLICT (device_id, product_id)
+      DO UPDATE SET
+        product_name = EXCLUDED.product_name,
+        search_keyword = EXCLUDED.search_keyword,
+        image_url = EXCLUDED.image_url,
+        product_url = EXCLUDED.product_url,
+        current_price = EXCLUDED.current_price,
+        is_active = true,
+        updated_at = NOW()
+      RETURNING *
+      `,
+      [
+        deviceId,
+        productId,
+        productName,
+        searchKeyword,
+        imageUrl || null,
+        productUrl || null,
+        currentPrice,
+      ],
+    );
+
+    // 해당 상품의 가장 최근 가격 확인
+    const lastPriceResult = await client.query(
+      `
+      SELECT price
+      FROM price_history
+      WHERE product_id = $1
+      ORDER BY captured_at DESC
+      LIMIT 1
+      `,
+      [productId],
+    );
+
+    // 최초 가격이거나 기존 가격과 달라졌을 때만 기록
+    const lastPrice = lastPriceResult.rows[0]?.price;
+
+    if (lastPrice !== currentPrice) {
+      await client.query(
+        `
+        INSERT INTO price_history (product_id, price)
+        VALUES ($1, $2)
+        `,
+        [productId, currentPrice],
+      );
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      message: '관심상품이 저장됐어요!',
+      product: productResult.rows[0],
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+
+    console.error('관심상품 저장 실패:', error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: '관심상품 저장에 실패했어요.',
+    });
+  } finally {
+    // 사용한 DB 연결을 반드시 반환
+    client.release();
+  }
+});
+
 // HMAC 서명 생성 함수
 function generateHmac(method, uri, accessKey, secretKey) {
   // uri 예: "/v2/providers/.../products/search?keyword=...&limit=10"
