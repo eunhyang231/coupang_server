@@ -7,6 +7,19 @@ const cors = require('cors');
 const crypto = require('crypto');
 const fetch = require('node-fetch'); // npm install node-fetch@2
 
+// ========================================
+// 🐘 Supabase PostgreSQL 연결 준비
+// v0.4 - 2026-07-18
+// ========================================
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
 // 🔐 쿠팡 OPEN API 키 (네 키로 바꿔 넣기)
 const COUPANG_ACCESS_KEY = process.env.COUPANG_ACCESS_KEY;
 const COUPANG_SECRET_KEY = process.env.COUPANG_SECRET_KEY;
@@ -21,6 +34,29 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// ========================================
+// ✅ Supabase 연결 확인용 임시 주소
+// 성공 확인 후 나중에 삭제할 예정
+// ========================================
+app.get('/db-test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() AS server_time');
+
+    res.json({
+      success: true,
+      message: 'Supabase 연결 성공!',
+      serverTime: result.rows[0].server_time,
+    });
+  } catch (error) {
+    console.error('Supabase 연결 실패:', error.message);
+
+    res.status(500).json({
+      success: false,
+      message: 'Supabase 연결 실패',
+    });
+  }
+});
 
 // HMAC 서명 생성 함수
 function generateHmac(method, uri, accessKey, secretKey) {
@@ -230,26 +266,6 @@ app.get('/search', async (req, res) => {
       }
     });
 
-
-    /*
-    const items = list.map((item) => ({
-      name: item.productName,
-      price: item.productPrice,
-      rocket: item.isRocket ?? false,
-      coupon: false, // JSON에 없으므로 기본값 false
-      image: item.productImage,
-      link: `https://www.coupang.com/vp/products/${item.productId}`,
-    }));
-
-
-    console.log('[SEARCH] mapped items length =', items.length);
-
-    res.json(items);
-  } catch (err) {
-    console.error('[SEARCH] server error:', err);
-    res.json([]);
-  }
-});*/
 
 app.get('/price-history', (req, res) => {
   const { productId } = req.query;
