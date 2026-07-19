@@ -63,6 +63,9 @@ app.get('/db-test', async (req, res) => {
 // v0.5 - 2026-07-18
 // ========================================
 app.post('/watched-products', async (req, res) => {
+  // 앱에서 전달받은 관심상품 정보 확인
+  console.log('[WATCHED_PRODUCTS] req.body =', req.body);
+
   const {
     deviceId,
     productId,
@@ -175,6 +178,51 @@ app.post('/watched-products', async (req, res) => {
     // 사용한 DB 연결을 반드시 반환
     client.release();
   }
+});
+
+// ==================================================
+// 💙 관심상품 목록 조회 API
+//
+// v0.1
+// 2026-07-19
+// - deviceId 기준 관심상품 조회
+// ==================================================
+app.get('/watched-products', async (req, res) => {
+  // 앱에서 전달받은 기기 ID 확인
+  const { deviceId } = req.query;
+
+  // 기기 ID가 없으면 요청 중단
+  if (!deviceId) {
+    return res.status(400).json({
+      success: false,
+      message: '기기 ID가 필요해요.',
+    });
+  }
+
+// DB 연결
+const client = await pool.connect();
+
+try {
+  // 관심상품 조회
+  const result = await client.query(
+    `
+    SELECT *
+    FROM watched_products
+    WHERE device_id = $1
+      AND is_active = true
+    ORDER BY updated_at DESC
+    `,
+    [deviceId],
+  );
+
+  return res.json({
+    success: true,
+    products: result.rows,
+  });
+} finally {
+  // DB 연결 반환
+  client.release();
+}
 });
 
 // HMAC 서명 생성 함수
