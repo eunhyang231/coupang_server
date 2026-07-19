@@ -58,6 +58,53 @@ app.get('/db-test', async (req, res) => {
   }
 });
 
+// ==================================================
+// 🔕 관심상품 비활성화 API
+//
+// v0.1
+// 2026-07-19
+// - deviceId와 productId 기준 알림 끄기
+// ==================================================
+app.patch('/watched-products', async (req, res) => {
+  // 앱에서 기기 ID와 상품 ID 받기
+  const { deviceId, productId } = req.body;
+
+  // 필수 정보 확인
+  if (!deviceId || !productId) {
+    return res.status(400).json({
+      success: false,
+      message: '기기 ID와 상품 ID가 필요해요.',
+    });
+  }
+
+  // DB 연결
+  const client = await pool.connect();
+
+  try {
+    // 관심상품 비활성화
+    await client.query(
+      `
+      UPDATE watched_products
+      SET is_active = false
+      WHERE device_id = $1
+        AND product_id = $2
+      `,
+      [deviceId, productId],
+    );
+
+    return res.json({
+      success: true,
+    });
+  } finally {
+    // DB 연결 반환
+    client.release();
+  }
+
+  return res.json({
+    success: true,
+  });
+});
+
 // ========================================
 // ❤️ 관심상품 Supabase 저장 API
 // v0.5 - 2026-07-18
