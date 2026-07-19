@@ -272,6 +272,41 @@ try {
 }
 });
 
+// ==================================================
+// 📦 가격 확인 대상 상품 조회
+//
+// v0.1
+// 2026-07-19
+// - 활성화된 관심상품을 상품별로 한 번만 조회
+// ==================================================
+app.get('/active-products', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (product_id)
+        product_id,
+        product_name,
+        search_keyword,
+        product_url,
+        current_price
+      FROM watched_products
+      WHERE is_active = true
+      ORDER BY product_id, updated_at DESC
+    `);
+
+    return res.json({
+      success: true,
+      products: result.rows,
+    });
+  } catch (error) {
+    console.error('가격 확인 대상 조회 실패:', error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: '가격 확인 대상을 불러오지 못했어요.',
+    });
+  }
+});
+
 // HMAC 서명 생성 함수
 function generateHmac(method, uri, accessKey, secretKey) {
   // uri 예: "/v2/providers/.../products/search?keyword=...&limit=10"
