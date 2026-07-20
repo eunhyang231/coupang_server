@@ -347,7 +347,7 @@ app.get('/check-price', async (req, res) => {
 
     // 검색어 URL 인코딩
     const encodedKeyword = encodeURIComponent(
-      firstProduct.searchKeyword,
+      firstProduct.search_keyword,
     );
 
     // 쿠팡 검색 URI 생성
