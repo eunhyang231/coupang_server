@@ -388,6 +388,22 @@ const uri =
 // 확인용 출력
 console.log(uri);
 
+// 쿠팡 API 요청 방식
+const method = 'GET';
+
+// 기존 HMAC 함수로 인증값 생성
+const { authorization } = generateHmac(
+  method,
+  uri,
+  COUPANG_ACCESS_KEY,
+  COUPANG_SECRET_KEY,
+);
+
+// 실제 쿠팡 API 요청 주소 생성
+const url = `${COUPANG_DOMAIN}${uri}`;
+
+console.log('자동 가격 확인 URL:', url);
+
     return res.json({
       success: true,
       count: products.length,
