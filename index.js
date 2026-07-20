@@ -273,6 +273,32 @@ try {
 });
 
 // ==================================================
+// 📦 활성 관심상품 공통 조회 함수
+//
+// v0.1
+// 2026-07-20
+// - 활성 상품을 상품별로 한 번만 조회
+// ==================================================
+
+// 가격 확인 대상 상품 목록 가져오기
+async function getActiveProducts() {
+  const result = await pool.query(`
+    SELECT DISTINCT ON (product_id)
+      product_id,
+      product_name,
+      search_keyword,
+      product_url,
+      current_price
+    FROM watched_products
+    WHERE is_active = true
+    ORDER BY product_id, updated_at DESC
+  `);
+
+  // 조회된 상품 목록 반환
+  return result.rows;
+}
+
+// ==================================================
 // 📦 가격 확인 대상 상품 조회
 //
 // v0.1
@@ -281,21 +307,12 @@ try {
 // ==================================================
 app.get('/active-products', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT DISTINCT ON (product_id)
-        product_id,
-        product_name,
-        search_keyword,
-        product_url,
-        current_price
-      FROM watched_products
-      WHERE is_active = true
-      ORDER BY product_id, updated_at DESC
-    `);
+    // 공통 함수로 활성 상품 목록 가져오기
+    const products = await getActiveProducts();
 
     return res.json({
       success: true,
-      products: result.rows,
+      products: products,
     });
   } catch (error) {
     console.error('가격 확인 대상 조회 실패:', error.message);
@@ -315,14 +332,60 @@ app.get('/active-products', async (req, res) => {
 // - 가격 확인 엔진 시작
 // ==================================================
 app.get('/check-price', async (req, res) => {
+  try {
+    // 활성화된 관심상품을 상품별로 한 번만 조회
+    // 공통 함수로 활성 상품 목록 가져오기
+    const products = await getActiveProducts();
 
-  console.log('가격 확인 시작');
+    console.log(`가격 확인 대상: ${products.length}개`);
 
+// 조회된 상품 목록 확인
+products.forEach((product) => {
+  console.log(
+    `상품: ${product.product_name} / 현재가격: ${product.current_price}원`
+  );
+});
+// 가격 확인할 첫 번째 상품 선택
+const firstProduct = products[0];
+
+// 관심상품이 없으면 종료
+if (!firstProduct) {
   return res.json({
     success: true,
-    message: '가격 확인 엔진 시작',
+    message: '확인할 상품이 없어요.',
   });
+}
 
+// 선택된 상품 확인
+console.log(
+  `첫 번째 확인 상품: ${firstProduct.product_name}`
+);
+
+// 쿠팡 검색어 인코딩
+const encodedKeyword = encodeURIComponent(
+  firstProduct.search_keyword,
+);
+
+// 가격 조회 API 주소 생성
+const uri =
+  `/v2/providers/affiliate_open_api/apis/openapi/v1/products/search?keyword=${encodedKeyword}&limit=1`;
+
+// 확인용 출력
+console.log(uri);
+
+    return res.json({
+      success: true,
+      count: products.length,
+      products: products,
+    });
+  } catch (error) {
+    console.error('가격 확인 대상 조회 실패:', error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: '가격 확인 대상을 불러오지 못했어요.',
+    });
+  }
 });
 
 // HMAC 서명 생성 함수
