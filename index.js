@@ -307,6 +307,24 @@ app.get('/active-products', async (req, res) => {
   }
 });
 
+// ==================================================
+// 💰 가격 확인 엔진
+//
+// v0.1
+// 2026-07-20
+// - 가격 확인 엔진 시작
+// ==================================================
+app.get('/check-price', async (req, res) => {
+
+  console.log('가격 확인 시작');
+
+  return res.json({
+    success: true,
+    message: '가격 확인 엔진 시작',
+  });
+
+});
+
 // HMAC 서명 생성 함수
 function generateHmac(method, uri, accessKey, secretKey) {
   // uri 예: "/v2/providers/.../products/search?keyword=...&limit=10"
