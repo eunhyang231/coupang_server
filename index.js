@@ -339,6 +339,21 @@ app.get('/check-price', async (req, res) => {
 
     console.log(`가격 확인 대상: ${products.length}개`);
 
+    // 첫 번째 상품 확인
+    const firstProduct = products[0];
+
+    console.log("첫 번째 확인 상품:");
+    console.log(firstProduct);
+
+    // 검색어 URL 인코딩
+    const encodedKeyword = encodeURIComponent(
+      firstProduct.searchKeyword,
+    );
+
+    // 쿠팡 검색 URI 생성
+    const uri =
+      `/v2/providers/affiliate_open_api/apis/openapi/v1/products/search?keyword=${encodedKeyword}&limit
+
 // 조회된 상품 목록 확인
 products.forEach((product) => {
   console.log(
