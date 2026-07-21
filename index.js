@@ -419,6 +419,18 @@ const newPrice = firstItem?.productPrice;
 
 console.log('쿠팡 최신 가격:', newPrice);
 
+// DB에 저장된 현재 가격
+const oldPrice = firstProduct.current_price;
+
+console.log('DB 저장 가격:', oldPrice);
+
+// 가격 변경 여부 확인
+if (newPrice === oldPrice) {
+  console.log('가격 변동 없음');
+} else {
+  console.log('가격 변동 발생!');
+}
+
     return res.json({
       success: true,
       count: products.length,
