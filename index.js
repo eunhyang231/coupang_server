@@ -408,6 +408,17 @@ const text = await response.text();
 console.log('쿠팡 응답 상태:', response.status);
 console.log('쿠팡 응답:', text);
 
+// 쿠팡 응답을 JSON으로 변환
+const json = JSON.parse(text);
+
+// 첫 번째 검색 결과 가져오기
+const firstItem = json.data?.productData?.[0];
+
+// 첫 번째 상품 가격 확인
+const newPrice = firstItem?.productPrice;
+
+console.log('쿠팡 최신 가격:', newPrice);
+
     return res.json({
       success: true,
       count: products.length,
