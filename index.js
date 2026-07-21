@@ -389,6 +389,8 @@ const url = `${COUPANG_DOMAIN}${uri}`;
 
 console.log('자동 가격 확인 URL:', url);
 
+console.log('=== fetch 시작 ===');
+
 // 쿠팡 API 호출
 const response = await fetch(url, {
   method,
@@ -397,6 +399,8 @@ const response = await fetch(url, {
     'Content-Type': 'application/json;charset=UTF-8',
   },
 });
+
+console.log('=== fetch 완료 ===');
 
 // 응답 내용 확인
 const text = await response.text();
