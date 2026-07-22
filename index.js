@@ -463,6 +463,22 @@ if (newPrice === oldPrice) {
   );
 
   console.log('DB 현재 가격 갱신 완료');
+
+  // ==================================================
+  // 📈 가격 변동 기록 저장
+  //
+  // v0.1
+  // 2026-07-22
+  // - 가격 변동 시 price_history 저장
+  // ==================================================
+
+  await pool.query(
+    `INSERT INTO price_history (product_id, price)
+     VALUES ($1, $2)`,
+    [firstProduct.product_id, newPrice],
+  );
+
+  console.log('가격 이력 저장 완료');
 }
 
     return res.json({
