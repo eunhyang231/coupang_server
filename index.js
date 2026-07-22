@@ -447,6 +447,22 @@ if (newPrice === oldPrice) {
   console.log('가격 변동 없음');
 } else {
   console.log('가격 변동 발생!');
+  // ==================================================
+  // 💾 현재 가격 갱신
+  //
+  // v0.1
+  // 2026-07-22
+  // - watched_products 현재 가격 업데이트
+  // ==================================================
+
+  await pool.query(
+    `UPDATE watched_products
+     SET current_price = $1
+     WHERE product_id = $2`,
+    [newPrice, firstProduct.product_id],
+  );
+
+  console.log('DB 현재 가격 갱신 완료');
 }
 
     return res.json({
