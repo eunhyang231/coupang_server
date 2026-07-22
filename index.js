@@ -424,6 +424,24 @@ const oldPrice = firstProduct.current_price;
 
 console.log('DB 저장 가격:', oldPrice);
 
+// ==================================================
+// 🕐 마지막 가격 확인 시간 갱신
+//
+// v0.1
+// 2026-07-22
+// - 가격 확인 성공 시 last_checked_at 갱신
+// ==================================================
+
+// 현재 상품의 마지막 확인 시간을 지금으로 변경
+await pool.query(
+  `UPDATE watched_products
+   SET last_checked_at = NOW()
+   WHERE product_id = $1`,
+  [firstProduct.product_id]
+);
+
+console.log('마지막 확인 시간 갱신 완료');
+
 // 가격 변경 여부 확인
 if (newPrice === oldPrice) {
   console.log('가격 변동 없음');
