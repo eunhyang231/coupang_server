@@ -325,6 +325,51 @@ app.get('/active-products', async (req, res) => {
 });
 
 // ==================================================
+// 📈 가격 이력 조회 API
+//
+// v0.1
+// 2026-07-23
+// - 상품별 가격 이력 조회
+// ==================================================
+app.get('/price-history', async (req, res) => {
+  // 상품 ID 확인
+  const { productId } = req.query;
+
+  // 상품 ID가 없으면 종료
+  if (!productId) {
+    return res.status(400).json({
+      success: false,
+      message: '상품 ID가 필요해요.',
+    });
+  }
+
+    try {
+      // 상품별 가격 이력 조회
+      const result = await pool.query(
+        `
+        SELECT price, captured_at
+        FROM price_history
+        WHERE product_id = $1
+        ORDER BY captured_at ASC
+        `,
+        [productId],
+      );
+
+      return res.json({
+        success: true,
+        history: result.rows,
+      });
+    } catch (error) {
+      console.error('가격 이력 조회 실패:', error.message);
+
+      return res.status(500).json({
+        success: false,
+        message: '가격 이력을 불러오지 못했어요.',
+      });
+    }wjw
+});
+
+// ==================================================
 // 💰 가격 확인 엔진
 //
 // v0.1
